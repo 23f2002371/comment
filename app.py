@@ -1,7 +1,12 @@
 import streamlit as st
 import pandas as pd
-import joblib
+import pickle
 import matplotlib.pyplot as plt
+
+try:
+    import joblib
+except ModuleNotFoundError:
+    joblib = None
 
 from utils.preprocessing import clean_text
 from utils.labels import label_map
@@ -18,7 +23,16 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model():
-    return joblib.load("logistic_model.pkl")
+    model_path = "logistic_model.pkl"
+
+    if joblib is not None:
+        try:
+            return joblib.load(model_path)
+        except Exception:
+            pass
+
+    with open(model_path, "rb") as model_file:
+        return pickle.load(model_file)
 
 model = load_model()
 
