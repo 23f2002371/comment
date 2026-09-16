@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
 
 try:
     import joblib
@@ -147,14 +146,9 @@ if submitted:
 
     st.subheader("Probability Distribution")
 
-    fig, ax = plt.subplots(figsize=(7,4))
-
     classes = getattr(model, "classes_", range(len(probabilities)))
-    ax.bar(
-        [label_map.get(int(category), str(category)) for category in classes],
-        probabilities
-    )
-
-    ax.set_ylim(0,1)
-
-    st.pyplot(fig)
+    probability_df = pd.DataFrame({
+        "Category": [label_map.get(int(category), str(category)) for category in classes],
+        "Probability": probabilities
+    }).set_index("Category")
+    st.bar_chart(probability_df, y="Probability")
