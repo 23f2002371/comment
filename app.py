@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle
 
 from utils.preprocessing import clean_text
 from utils.labels import label_map
@@ -15,7 +15,8 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     model_path = "logistic_model.pkl"
-    return joblib.load(model_path)
+    with open(model_path, "rb") as model_file:
+        return pickle.load(model_file)
 
 model = load_model()
 
