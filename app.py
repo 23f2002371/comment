@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 from pathlib import Path
 
 from utils.preprocessing import clean_text
 from utils.labels import label_map
+
+NEUTRAL_WEIGHT = 0.01
 
 st.set_page_config(
     page_title="Comment Category Classifier",
@@ -114,9 +117,15 @@ if submitted:
 
     classifier = model.named_steps["model"]
     probabilities = classifier.predict_proba(transformed_input)[0]
-    prediction = classifier.classes_[probabilities.argmax()]
+    adjusted_probabilities = probabilities.copy()
+    neutral_index = np.flatnonzero(classifier.classes_ == 0)
+    if neutral_index.size:
+        adjusted_probabilities[neutral_index[0]] *= NEUTRAL_WEIGHT
+        adjusted_probabilities /= adjusted_probabilities.sum()
 
-    confidence = probabilities.max() * 100
+    prediction = classifier.classes_[adjusted_probabilities.argmax()]
+
+    confidence = adjusted_probabilities.max() * 100
 
     st.markdown("---")
 
@@ -138,6 +147,30 @@ if submitted:
     classes = getattr(model, "classes_", range(len(probabilities)))
     probability_df = pd.DataFrame({
         "Category": [label_map.get(int(category), str(category)) for category in classes],
-        "Probability": probabilities
-    }).set_index("Category")
-    st.bar_chart(probability_df, y="Probability")
+        "Probability": adjusted_probabilities
+    })
+
+    figure, axis = plt.subplots(figsize=(9, 4.5))
+    bars = axis.barh(
+        probability_df["Category"],
+        probability_df["Probability"],
+        color=["#4CAF50", "#FFC107", "#F44336", "#212121"]
+    )
+    axis.set_title("Comment Category Confidence")
+    axis.set_xlabel("Confidence")
+    axis.set_xlim(0, 1)
+    axis.xaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    axis.grid(axis="x", linestyle="--", alpha=0.35)
+    axis.set_axisbelow(True)
+
+    for bar, probability in zip(bars, probability_df["Probability"]):
+        axis.text(
+            min(probability + 0.02, 0.98),
+            bar.get_y() + bar.get_height() / 2,
+            f"{probability:.2%}",
+            va="center"
+        )
+
+    figure.tight_layout()
+    st.pyplot(figure, use_container_width=True)
+    plt.close(figure)
